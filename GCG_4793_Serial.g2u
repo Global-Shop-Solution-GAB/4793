@@ -1,0 +1,198 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.sError.Declare(String)
+v.Local.ssql.Declare(string)
+v.Local.sret.Declare(String)
+v.Local.i.Declare(long)
+v.Local.iqty.Declare(long)
+v.Local.fret.Declare(long)
+v.Local.sfield.Declare(String)
+v.Local.sascii.Declare(String)
+v.Local.bnum.Declare(boolean)
+v.Local.sleft.Declare(String)
+v.Local.iqtyloop.Declare(long)
+v.Local.shold.Declare(String)
+v.Local.ilast.Declare(long)
+v.Local.bcont.Declare(boolean,true)
+v.Global.soriginal.Declare(string)
+'This project will automatically assign Alphanumeric Serial Numbers at time the Work Order is Generated.
+'Coded by: WAW
+'Date: 10/23/2017
+'Ran from SFC>WO>FILE>NEW>SAVE>manually enter serial numbers/script 1/script 2
+
+'I put it all in one subroutine, sorry code reviewers....
+F.ODBC.Connection!conx.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+'see if the program is running from:
+f.Intrinsic.Control.If(v.Caller.Hook,=,31825)
+	'change the script 1 button to 
+	v.Passed.000006.Set("Alpha Numeric")
+	v.Passed.000007.set("Numeric")
+'script 1 button - Alpha numeric
+f.Intrinsic.Control.ElseIf(v.Caller.Hook,=,31826)
+
+	'check to see if a serial number has already been created
+	f.Intrinsic.Control.If(v.Passed.000027,<>,"")
+		'inform the user serial numbers have already been created
+		F.Intrinsic.UI.Msgbox("Alpha-Numeric serial numbers cannot be created as serial numbers have either already been generated or created manually")
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000082,"LOCK","1")
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000022,"LOCK","1")
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000023,"LOCK","1")
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000024,"LOCK","1")
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000025,"LOCK","1")	
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.AUX001,"LOCK","1")	
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000030,"LOCK","1")					
+		f.Intrinsic.Control.ExitSub
+	f.Intrinsic.Control.EndIf
+	'query to see if the company option to attach manual serial numbers is turned on, if it is not, end the program.
+	f.Intrinsic.String.Build("select F_BOOLEAN from V_OP_HEADER where ID = '{0}'","401137",v.Local.ssql)
+	f.ODBC.Connection!conx.executeandreturn(v.Local.ssql,v.Local.sret)
+	f.Intrinsic.Control.If(v.Local.sret.Trim,=,"0")
+		F.Intrinsic.UI.Msgbox("The company option to allow manual serial numbers is not activated.")
+		f.Intrinsic.Control.CallSub(unload)
+	f.Intrinsic.Control.EndIf
+	'get the number of serial numbers that need to be created
+	v.Local.iqty.Set(v.Passed.000026)	
+	v.Local.ssql.Set("Select GCG_ALPHA from GCG_4793_Serial")
+	
+	f.ODBC.Connection!conx.executeandreturn(v.Local.ssql,v.Local.sret)
+	'Loads name of BDF and ID into memory
+	Function.Intrinsic.BDF.Load("AUX001","AUX001")
+	'loop through the number of serial numbers needed
+	f.Intrinsic.Control.For(v.Local.iqtyloop,1,v.Local.iqty,1)
+		f.Intrinsic.String.Base36Increment(v.Local.Sret,v.Local.sret)
+		'Writes row with the alpha value
+		Function.Intrinsic.BDF.WriteRow("AUX001",v.Local.sret)		
+	f.Intrinsic.Control.next(v.Local.iqtyloop)
+'	f.Intrinsic.Control.DoEvents
+	'update the table for the last numeric
+	f.Intrinsic.String.Build("UPDATE GCG_4793_SERIAL set GCG_LASTALPHA = '{0}'",v.Local.sret,v.Local.ssql)
+	f.ODBC.Connection!conx.execute(v.Local.ssql)
+	'Writes CloneBDF to be read by CORE
+	Function.Intrinsic.BDF.Save("AUX001","AUX001")	
+	v.Passed.000027.Set(v.Local.iqty)
+	'lock the textboxes and grid
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000082,"LOCK","1")
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000022,"LOCK","1")
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000023,"LOCK","1")
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000024,"LOCK","1")
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000025,"LOCK","1")	
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.AUX001,"LOCK","1")	
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000030,"LOCK","1")		
+'script 2 button - Numeric only
+f.Intrinsic.Control.ElseIf(v.Caller.Hook,=,31827)
+	'check to see if a serial number has already been created
+	f.Intrinsic.Control.If(v.Passed.000027,<>,"")
+		'inform the user serial numbers have already been created
+		F.Intrinsic.UI.Msgbox("Numeric serial numbers cannot be created as serial numbers have either already been generated or created manually")
+		'lock the textboxes and grid
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000082,"LOCK","1")
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000022,"LOCK","1")
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000023,"LOCK","1")
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000024,"LOCK","1")
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000025,"LOCK","1")	
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.AUX001,"LOCK","1")	
+		f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000030,"LOCK","1")			
+		f.Intrinsic.Control.ExitSub
+		
+	f.Intrinsic.Control.EndIf
+	'query to see if the company option to attach manual serial numbers is turned on, if it is not, end the program.
+	f.Intrinsic.String.Build("select F_BOOLEAN from V_OP_HEADER where ID = '{0}'","401137",v.Local.ssql)
+	f.ODBC.Connection!conx.executeandreturn(v.Local.ssql,v.Local.sret)
+	f.Intrinsic.Control.If(v.Local.sret.Trim,=,"0")
+		F.Intrinsic.UI.Msgbox("The company option to allow manual serial numbers is not activated.")
+		f.Intrinsic.Control.CallSub(unload)
+	f.Intrinsic.Control.EndIf
+	'get the number of serial numbers that need to be created
+	v.Local.iqty.Set(v.Passed.000026)	
+	v.Local.ssql.Set("Select GCG_NUMERIC from GCG_4793_Serial")
+	f.ODBC.Connection!conx.executeandreturn(v.Local.ssql,v.Local.sret)
+	v.Local.fret.Set(v.Local.sret)	
+	'Loads name of BDF and ID into memory
+	Function.Intrinsic.BDF.Load("AUX001","AUX001")
+	f.Intrinsic.Control.For(v.Local.i,1,v.Local.iqty,1)
+		f.Intrinsic.Math.Add(v.Local.fret,1,v.Local.fret)
+		'Writes row with numeric value
+		Function.Intrinsic.BDF.WriteRow("AUX001",v.Local.fret)
+	f.Intrinsic.Control.Next(v.Local.i)
+	'Writes the BDF info back to the BDF
+	Function.Intrinsic.BDF.Save("AUX001","AUX001")
+	'update the table for the last numeric
+	f.Intrinsic.String.Build("UPDATE GCG_4793_SERIAL set GCG_LASTNUMERIC = '{0}'",v.Local.fret,v.Local.ssql)
+	f.ODBC.Connection!conx.execute(v.Local.ssql)
+	v.Passed.000027.Set(v.Local.iqty)
+	'lock the textboxes and grid
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000082,"LOCK","1")
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000022,"LOCK","1")
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000023,"LOCK","1")
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000024,"LOCK","1")
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000025,"LOCK","1")	
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.AUX001,"LOCK","1")	
+	f.Intrinsic.UI.ChangeCallerProperty(v.Passed.000030,"LOCK","1")		
+'update the custom table on the pre-process hook
+f.Intrinsic.Control.ElseIf(v.Caller.Hook,=,31833)
+	'update the numeric serial number
+	v.Local.ssql.Set("Select GCG_NUMERIC, GCG_LASTNUMERIC from GCG_4793_Serial")
+	F.ODBC.Connection!conx.OpenLocalRecordsetRO("rst",V.Local.ssql)
+	'see if the values match, if not update the numeric
+	f.Intrinsic.Control.If(v.ODBC.conx!rst.FieldValTrim!GCG_NUMERIC,<>,v.ODBC.conx!rst.FieldValTrim!GCG_LASTNUMERIC)
+		v.Local.sret.Set(v.ODBC.conx!rst.FieldValTrim!GCG_LASTNUMERIC)
+		f.ODBC.conx!rst.Close	
+		f.Intrinsic.String.Build("UPDATE GCG_4793_SERIAL set GCG_NUMERIC = '{0}'",v.Local.sret,v.Local.ssql)
+		f.ODBC.Connection!conx.execute(v.Local.ssql)		
+	f.Intrinsic.Control.Else
+		f.ODBC.conx!rst.Close
+	f.Intrinsic.Control.EndIf
+	'update the alpha serial number
+	v.Local.ssql.Set("Select GCG_ALPHA, GCG_LASTALPHA from GCG_4793_Serial")
+	F.ODBC.Connection!conx.OpenLocalRecordsetRO("rst",V.Local.ssql)
+	'see if the values match, if not update the numeric
+	f.Intrinsic.Control.If(v.ODBC.conx!rst.FieldValTrim!GCG_ALPHA,<>,v.ODBC.conx!rst.FieldValTrim!GCG_LASTALPHA)
+		v.Local.sret.Set(v.ODBC.conx!rst.FieldValTrim!GCG_LASTALPHA)
+		f.ODBC.conx!rst.Close	
+		f.Intrinsic.String.Build("UPDATE GCG_4793_SERIAL set GCG_ALPHA = '{0}'",v.Local.sret,v.Local.ssql)
+		f.ODBC.Connection!conx.execute(v.Local.ssql)		
+	f.Intrinsic.Control.Else
+		f.ODBC.conx!rst.Close
+	f.Intrinsic.Control.EndIf
+f.Intrinsic.Control.EndIf
+
+f.Intrinsic.Control.CallSub(unload)
+
+F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4793_Serial.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.unload.Start
+F.Intrinsic.Control.SetErrorHandler("Unload_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.sError.Declare(String)
+
+'Close the connection and end the program
+F.ODBC.Connection!conx.Close
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Unload_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4793_Serial.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+
+Program.Sub.unload.End
+
+
